@@ -131,15 +131,24 @@ rep("\nstartGame();\nlet dprNow=", "\nstartGame();netConnect();\nlet dprNow=")
 
 # ---------------- HTML ----------------
 rep("<title>قراصنة البحر</title>", "<title>قراصنة البحر أونلاين</title>")
-TOP_ROWS = '''<div class="rg"><span title="ذهب"><i data-ic="coin"></i><b id="r_gold">0</b></span><span title="خشب"><i data-ic="wood"></i><b id="r_wood">0</b></span><span title="حديد"><i data-ic="iron"></i><b id="r_iron">0</b></span><span title="طعام"><i data-ic="meat"></i><b id="r_food">0</b></span><span title="بارود"><i data-ic="barrel"></i><b id="r_powder">0</b></span><span title="السكان"><i data-ic="pop"></i><b id="r_pop">0</b></span></div>
-    <div class="row"><span class="lbl" id="clock">07:00</span><span class="lbl hon2" title="الشرف"><i data-ic="trophy"></i><b id="r_honor">0</b><span id="r_shield" class="hide"><i data-ic="shield"></i></span><span id="r_traitor" class="hide"><i data-ic="dagger"></i></span><i id="netDot" class="off"></i></span></div>
+TOP = '''  <div class="top">
+    <div class="vb" title="الهيكل"><i data-ic="hull"></i><div class="bar"><i id="hullBar"></i></div><span class="lbl" id="hullTxt">100</span></div>
+    <div class="vb" title="الطاقم"><i data-ic="crew"></i><div class="bar"><i id="crewBar"></i></div><span class="lbl" id="crewTxt">14 / 14</span></div>
+    <div class="rg"><span title="ذهب"><i data-ic="coin"></i><b id="r_gold">0</b></span><span title="خشب"><i data-ic="wood"></i><b id="r_wood">0</b></span><span title="حديد"><i data-ic="iron"></i><b id="r_iron">0</b></span><span title="طعام"><i data-ic="meat"></i><b id="r_food">0</b></span><span class="xr" title="بارود"><i data-ic="barrel"></i><b id="r_powder">0</b></span><span class="xr" title="السكان"><i data-ic="pop"></i><b id="r_pop">0</b></span></div>
+    <div class="st"><button id="shopBtn" aria-label="القائمة"><i data-ic="menu"></i><i id="menuBadge" class="hide">0</i></button><span id="r_shield" class="hide" title="درع حماية"><i data-ic="shield"></i></span><span id="r_traitor" class="hide" title="غدّار"><i data-ic="dagger"></i></span><span title="الاتصال"><i id="netDot" class="off"></i></span><span class="hide"><span id="clock"></span><b id="r_honor">0</b></span></div>
+  </div>
+  <div id="tc">
     <div id="raidBar" class="hide"><i data-ic="swords"></i><b id="raidName"></b><span id="raidTime">6:00</span><span id="raidPct">0%</span><button id="raidQuit">انسحاب</button></div>
     <div id="bossBar" class="hide"><span id="bossName"></span><div class="bar"><i id="bossFill"></i></div></div>
     <div id="navHint" class="hide"><svg id="navArr" viewBox="0 0 24 24" aria-hidden="true"><path d="M12,2L19.5,21L12,16.2L4.5,21Z" fill="currentColor"/></svg><span id="navTxt"></span></div>
-    <button id="shopBtn"><i data-ic="scroll"></i> القائمة<i id="menuBadge" class="hide">0</i></button>
   </div>'''
 rrep(r'  <button id="shopBtn">.*?</button>\n', '')
-rrep(r'    <div class="row"><span><svg class="ic i-coin".*?<span class="lbl">موجة <b id="wave">1</b></span></div>\n  </div>', TOP_ROWS.replace('\\', '\\\\'))
+rrep(r'  <div class="top">\n.*?<span class="lbl">موجة <b id="wave">1</b></span></div>\n  </div>', TOP.replace('\\', '\\\\'))
+rrep(r'<div id="cap" class="hide">القبطان<div class="bar">', '<div id="cap" class="hide"><div class="bar">')
+rrep(r'(<div id="breath" class="hide"><svg.*?</svg>) النفَس', r'\1')
+rep('<button class="sbtn" id="wclose" style="background:#5A1712">', '<button class="sbtn" id="wclose">')
+rep("$('fireLbl').textContent=foot?'سيف':'نار';", "{const fl=$('fireLbl'),k=foot?'sword':'cannon';if(fl._k!==k){fl._k=k;fl.innerHTML=icoSVG(k);}}")
+rep('<span id="fireLbl">نار</span>', '<span id="fireLbl"></span>')
 rep('<div id="acts">', '<div id="acts">\n    <button class="act hide" id="aHome"></button><button class="act hide" id="aRaid"></button>')
 START = '''<div class="ov" id="start">
   <div class="card">
@@ -168,8 +177,10 @@ OVERLAYS = '''<div class="ov hide" id="ui"><div class="card uiCard"><div class="
 <div class="ov hide" id="confirm"><div class="card"><h2 id="cfTitle"></h2><div id="cfBody"></div><div class="row2 cen"><button class="btn" id="cfOk">تمام</button><button class="sbtn" id="cfNo">رجوع</button></div></div></div>
 '''
 rep('<div class="ov hide" id="shop"><div class="card shop" id="shopCard"></div></div>\n', '<div class="ov hide" id="shop"><div class="card shop" id="shopCard"></div></div>\n' + OVERLAYS)
-CSS = open(os.path.join(HERE, 'online.css'), encoding='utf-8').read()
-rep('</style>\n</head>', CSS + '\n</style>\n</head>')
+CSS = open(os.path.join(HERE, 'style.css'), encoding='utf-8').read()
+rrep(r'<style>\n:root\{.*?</style>', '<style>\n' + CSS.replace('\\', '\\\\') + '</style>')
+rep('<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@400;700&family=Lalezar&family=Tajawal:wght@500;800&display=swap" rel="stylesheet">',
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link href="https://fonts.googleapis.com/css2?family=Aref+Ruqaa:wght@700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">')
 # shared rules (window.SH) before the game script
 shared = open(os.path.join(ROOT, 'server', 'shared.js'), encoding='utf-8').read()
 rep('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>\n<script>',
@@ -222,6 +233,13 @@ for f in ORDER:
 if bad: sys.exit(1)
 BOOT = "\n\nlet last=performance.now()/1000,wakeT=0;\ngenerateIslands();"
 rep(BOOT, "\n/* ======================= ONLINE ======================= */\n" + "\n".join(f"/* ---- {f} ---- */\n{mods[f]}" for f in ORDER) + BOOT)
+# one text face everywhere (canvas labels too): IBM Plex Sans Arabic; Aref Ruqaa stays for the name and the treasure map
+for f0, f1 in [('Lalezar,Tajawal,sans-serif', 'IBM Plex Sans Arabic,sans-serif'), ('Lalezar, Tajawal, sans-serif', 'IBM Plex Sans Arabic,sans-serif'),
+               ('"Aref Ruqaa",Lalezar,serif', '"Aref Ruqaa",serif'), ('Tajawal,sans-serif', 'IBM Plex Sans Arabic,sans-serif')]:
+    s = s.replace(f0, f1)
+left = re.findall(r'.{30}(?:Lalezar|Tajawal).{30}', s)
+if left:
+    sys.exit('font names left: ' + repr(left[:4]))
 out = os.environ.get('OUT') or os.path.join(ROOT, 'server', 'public', 'index.html')
 open(out, 'w', encoding='utf-8').write(s)
 print('built', out, len(s.encode('utf-8')), 'bytes')

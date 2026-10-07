@@ -14,10 +14,14 @@ Object.assign(ICN,{
   chest:[['M3,9.4Q3,5 7.4,5H16.6Q21,5 21,9.4V11H3Z',{}],['M3,12.2H21V20.4H3Z',{o:.8}],['M10.8,9.6H13.2V14.4H10.8Z',{}]],
   star:[['M12,2.2L14.9,8.6L21.8,9.2L16.6,13.8L18.2,20.6L12,17L5.8,20.6L7.4,13.8L2.2,9.2L9.1,8.6Z',{}]],
   home:[['M2.6,11.6L12,3.8L21.4,11.6H18.6V20.6H14V15H10V20.6H5.4V11.6Z',{}]],
+  menu:[['M4,6.6H20M4,12H20M4,17.4H14',{s:2.1}]],
+  cannon:[['M3.85,9.89L17.77,5.74L17.56,5.18L19.9,4.3L21.72,9.16L19.38,10.04L19.17,9.48L5.95,15.51A3,3 0 0 1 3.85,9.89Z',{}],['M1.82,13.37a1.3,1.3 0 1,0 2.6,0a1.3,1.3 0 1,0 -2.6,0Z',{}],
+    ['M7.6,14.3L16,11.1L17.3,15.4L9.2,18.2Z',{o:.6}],['M6.6,17.1a3.6,3.6 0 1,0 7.2,0a3.6,3.6 0 1,0 -7.2,0ZM9,17.1a1.2,1.2 0 1,0 2.4,0a1.2,1.2 0 1,0 -2.4,0Z',{e:1}]],
 });
 const RES_ICON={gold:'coin',wood:'wood',iron:'iron',food:'meat',powder:'barrel',pop:'pop'};
 function resTxt(o,sep){const a=[];for(const r of SH.RES)if(o&&o[r])a.push(icoSVG(RES_ICON[r],'i-'+RES_ICON[r])+fmtN(o[r]));return a.join(sep||' ');}
 function fmtN(v){v=Math.floor(v||0);return v>=1e6?(v/1e6).toFixed(1)+'م':v>=1e4?(v/1e3).toFixed(1)+'ألف':String(v);}
+function fmtS(v){v=Math.floor(v||0);return v>=1e6?(v/1e6).toFixed(v>=1e7?0:1)+'M':v>=1e4?(v/1e3).toFixed(v>=1e5?0:1)+'K':String(v);}
 function fmtT(sec){sec=Math.max(0,Math.ceil(sec));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return h?h+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'):m+':'+String(s).padStart(2,'0');}
 function ago(t){const s=(srvNow()-t)/1000;return s<60?'الحين':s<3600?'قبل '+Math.floor(s/60)+' د':s<86400?'قبل '+Math.floor(s/3600)+' س':'قبل '+Math.floor(s/86400)+' يوم';}
 /* resources shown in the HUD: server values plus production since the last update */
@@ -27,7 +31,7 @@ function canPay(c){const r=resNow();for(const k in c)if((r[k]||0)<c[k])return fa
 function costHTML(c){return resTxt(c,' ');}
 let hudT=0;
 function onlineHud(dt){hudT-=dt;if(hudT>0||!ON.me)return;hudT=.25;const r=resNow();
-  for(const k of['gold','wood','iron','food','powder'])$('r_'+k).textContent=fmtN(r[k]);$('r_pop').textContent=Math.floor(r.pop)+'/'+(ON.me.popCap||0);
+  for(const k of['gold','wood','iron','food','powder'])$('r_'+k).textContent=fmtS(r[k]);$('r_pop').textContent=Math.floor(r.pop)+'/'+(ON.me.popCap||0);
   $('r_honor').textContent=ON.me.honor|0;const sh=ON.me.shield>srvNow();$('r_shield').classList.toggle('hide',!sh);if(sh)$('r_shield').title='درع حماية: '+fmtT((ON.me.shield-srvNow())/1000);
   const tr=ON.me.traitor>srvNow();$('r_traitor').classList.toggle('hide',!tr);
   /* raid bar */
@@ -224,7 +228,7 @@ function tabLogs(){const me=ON.me;let h='';
   for(const id of me.allies){const p=ON.pl.get(id);h+=`<div class="srow pl" data-a="prof" data-id="${id}"><div class="tx"><b>${esc(p?p.name:'؟')}</b>${p&&p.tag?' <span class="tagx">#'+esc(p.tag)+'</span>':''}</div><button class="sbtn sm red" data-a="abreak" data-id="${id}">فك التحالف</button></div>`;}
   h+=`<h2>${icoSVG('scroll')} سجلّك</h2>`;if(!me.logs.length)h+='<p class="mut">ما صار شي بعد.</p>';
   for(const e of me.logs){const rev=e.k==='def'&&!e.win&&srvNow()-e.t<24*3600e3&&e.byId;h+=`<div class="lg"><div>${logLine(e)}</div><span class="ct">${ago(e.t)}</span>${rev?`<button class="sbtn sm red" data-a="revenge" data-id="${e.byId}">${icoSVG('swords')} انتقم</button>`:''}</div>`;}
-  h+=`<h2>${icoSVG('wave')} أخبار البحار</h2>`;for(const f of ON.feed.slice(0,12))h+=`<div class="lg"><div>${esc(f.text)}</div><span class="ct">${ago(f.t)}</span></div>`;return h;}
+  h+=`<h2>${icoSVG('wave')} أخبار البحار</h2>`;for(const f of ON.feed.slice(0,12))h+=`<div class="lg"><div>${icz(esc(f.text))}</div><span class="ct">${ago(f.t)}</span></div>`;return h;}
 /* ---------- profile card ---------- */
 function openProfile(id){if(!id||id===ON.me.id){uiOpen('island');return;}UI.prof={id};netSend({t:'prof',id});showProfile();}
 function uiProfile(p){if(UI.prof&&UI.prof.id===p.id){UI.prof=p;showProfile();}}
