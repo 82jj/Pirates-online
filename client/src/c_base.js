@@ -35,6 +35,7 @@ function computeBaseLayout(il){const B=il.base,A=B.ang,W=(r,a)=>({x:B.x+Math.cos
 function spotPos(il,key){const m=/^([a-z]+)(\d+)$/.exec(key);if(!m)return null;const a=il.lay.spots[m[1]];return a?a[+m[2]]:null;}
 /* ---- island job for player islands: terrain then the base ---- */
 function* playerIslandJob(il){yield* decorateJob(il);buildGrassFor(il);yield;il.baseG=new THREE.Group();scene.add(il.baseG);buildDock(il);yield;
+  il.built=true;/* the job runner marks it built only after this last step; the layout needs it now */
   if(il.pid&&ON.me&&il.pid===ON.me.id)applyLayout(Object.assign({id:ON.me.id},ON.me));else requestLayout(il);}
 function requestLayout(il){if(!il.pid||!ON.me)return;if(il.pid===ON.me.id){applyLayout(Object.assign({id:ON.me.id},ON.me));return;}netSend({t:'layout',id:il.pid});}
 function clearBase(il){clearAmbient(il);for(const k in il.ents)for(const o of il.ents[k].objs||[])disposeObj(o);il.ents={};il.walls=[];if(il.meshG){disposeObj(il.meshG);il.meshG=null;}if(il.flagG){disposeObj(il.flagG);il.flagG=null;}
