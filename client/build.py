@@ -57,6 +57,18 @@ rrep(r"\}else\{P\.speed\*=\.98;\n    if\(!boat\)\{sunkT\+=dt;.*?',3200\);\}\}\}"
 rep("banner('سقط القبطان! رجاله أعادوه إلى السفينة (−10% ذهب)',2200);gold=Math.floor(gold*.9);",
     "banner('سقط القبطان! رجاله أعادوه إلى السفينة',2200);if(RAID.on)raidFinish(false);")
 rep("function canClaim(d){return ", "function canClaim(d){return false&&")
+# ---------------- clarity & moonlit nights ----------------
+rep("renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));", "renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));")
+rep("let dprNow=Math.min(devicePixelRatio||1,1.75),ftAvg=1/60,resT=0;", "let dprNow=Math.min(devicePixelRatio||1,2),ftAvg=1/60,resT=0;")
+rep("if(resT>9&&ftAvg>1/38&&dprNow>1.01){dprNow=Math.max(1,dprNow-.15);", "if(resT>9&&ftAvg>1/30&&dprNow>1.36){dprNow=Math.max(1.35,dprNow-.15);")
+rep("AU.uNightSky=[(.01+.025*moonUp)*nk,(.016+.04*moonUp)*nk,(.03+.08*moonUp)*nk];", "AU.uNightSky=[(.03+.03*moonUp)*nk,(.045+.045*moonUp)*nk,(.085+.09*moonUp)*nk];")
+rep("AT.useSun=e>-.035;AT.LD=AT.useSun?sun:moon;", "AT.useSun=e>-.035;AT.LD=AT.useSun?sun:(moon[1]>.28?moon:[.33,.86,.39]);")
+rep(":.45*moonUp*AT.csF*(1-.7*AT.gray);", ":(.34+.3*moonUp)*AT.csF*(1-.5*AT.gray);")
+rep("AT.hemiI=(.25+.6*AT.dayK)*(1+.35*AT.gray)*(1-.3*wx.storm)+.1*AT.nightK;", "AT.hemiI=(.25+.6*AT.dayK)*(1+.35*AT.gray)*(1-.3*wx.storm)+.5*AT.nightK;")
+rep("+.05*AT.nightK*moonUp;", "+(.1+.08*moonUp)*AT.nightK;")
+rep("hemi.color.setRGB(Math.max(a[0]*1.7,.2*nb),Math.max(a[1]*1.55,.26*nb),Math.max(a[2]*1.35,.4*nb));", "hemi.color.setRGB(Math.max(a[0]*1.7,.36*nb),Math.max(a[1]*1.55,.45*nb),Math.max(a[2]*1.35,.66*nb));")
+rep("hemi.groundColor.setRGB(.2,.24,.2).multiplyScalar(.25+.75*dayK);", "hemi.groundColor.setRGB(.2,.24,.2).multiplyScalar(.5+.5*dayK);")
+rep("let fc=new THREE.Color(AT.fog[0],AT.fog[1],AT.fog[2]),fn=", "let fc=new THREE.Color(Math.max(AT.fog[0],.05*nightK),Math.max(AT.fog[1],.072*nightK),Math.max(AT.fog[2],.12*nightK)),fn=")
 # ---------------- HUD ----------------
 rep("$('gold').textContent=gold;$('wave').textContent=Math.max(1,wave);$('isl').textContent=islands.filter(i=>i.owner==='player').length+'/'+islands.filter(i=>i.town).length;", "")
 rep("$('wood').textContent=wood;$('iron').textContent=iron;$('food').textContent=food;", "")

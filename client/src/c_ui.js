@@ -49,14 +49,37 @@ const UI={open:false,tab:'island',sub:'members',armyTo:'ship',armyShip:null,flee
 const TABS=[['island','home','جزيرتي'],['army','swords','الجيش'],['fleet','ship','الأسطول'],['flag','flag','العلم'],['clan','banner','الكلان'],['top','trophy','الترتيب'],['logs','scroll','السجل']];
 function uiOpen(tab){UI.open=true;if(tab)UI.tab=tab;$('ui').classList.remove('hide');if(UI.tab==='logs'){ON.unread.logs=0;netSend({t:'logsSeen'});}if(UI.tab==='clan'&&UI.sub==='chat')ON.unread.chat=0;
   if(UI.tab==='top')netSend({t:'top'});if(UI.tab==='clan'&&!ON.clan)netSend({t:'clanList',q:UI.clanQ});renderUI();menuBadge();}
-function uiClose(){UI.open=false;$('ui').classList.add('hide');UI.prof=null;}
+function uiClose(){UI.open=false;$('ui').classList.add('hide');UI.prof=null;dropFocus();}
+/* iOS keeps a hidden text field focused (login, chat) and then shows its Paste bubble on every long press: drop that focus as soon as the game itself is touched */
+function dropFocus(){const a=document.activeElement;if(a&&a!==document.body&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))a.blur();}
+for(const ev of['touchstart','pointerdown'])document.addEventListener(ev,e=>{const t=e.target;if(t&&t.closest&&t.closest('.ov:not(.hide)'))return;dropFocus();},{capture:true,passive:true});
 function uiRefresh(what){if(!UI.open)return;if(what==='chat'&&!(UI.tab==='clan'))return;if(what==='players'&&!(UI.tab==='top'||UI.tab==='clan'||UI.tab==='logs'))return;renderUI();}
 function keepInputs(f){const a=document.activeElement,id=a&&a.id,v={};$('uiBody').querySelectorAll('input,textarea,select').forEach(e=>{if(e.id)v[e.id]=e.type==='checkbox'?e.checked:e.value;});
   const st=$('uiBody').scrollTop;f();for(const id in v){const e=document.getElementById(id);if(e){if(e.type==='checkbox')e.checked=v[id];else e.value=v[id];}}if(id){const e=document.getElementById(id);if(e)e.focus();}$('uiBody').scrollTop=st;}
 function renderUI(){if(!UI.open||!ON.me)return;$('uiTabs').innerHTML=TABS.map(([k,ic,n])=>`<button class="tb${UI.tab===k?' on':''}" data-tab="${k}">${icoSVG(ic)}<span>${n}</span>${k==='logs'&&(ON.unread.logs||ON.me.allyIn.length)?'<i class="dot"></i>':''}${k==='clan'&&ON.unread.chat?'<i class="dot"></i>':''}</button>`).join('');
-  keepInputs(()=>{let h='';try{h=({island:tabIsland,army:tabArmy,fleet:tabFleet,flag:tabFlag,clan:tabClan,top:tabTop,logs:tabLogs})[UI.tab]();}catch(e){console.error(e);h='<p>صار خطأ</p>';}$('uiBody').innerHTML=h;});
+  UI.home=atHome();const gate=HOME_TABS.has(UI.tab)&&!UI.home;
+  keepInputs(()=>{let h='';try{h=({island:tabIsland,army:tabArmy,fleet:tabFleet,flag:tabFlag,clan:tabClan,top:tabTop,logs:tabLogs})[UI.tab]();}catch(e){console.error(e);h='<p>صار خطأ</p>';}
+    $('uiBody').innerHTML=(gate?awayCard():'')+h;if(gate)$('uiBody').querySelectorAll('[data-a]').forEach(b=>{if(HOME_ACTS.has(b.dataset.a))b.disabled=true;});});
   if(UI.tab==='flag')flagEditorInit();if(UI.tab==='clan'&&UI.sub==='chat'){const cl=$('chatLog');if(cl)cl.scrollTop=cl.scrollHeight;}}
-let uiTick=0;function uiTimers(dt){if(!UI.open)return;uiTick-=dt;if(uiTick>0)return;uiTick=1;if(UI.tab==='island'||UI.tab==='fleet'){const anyT=document.querySelector('#uiBody [data-timer]');if(anyT)renderUI();}}
+let uiTick=0;function uiTimers(dt){if(!UI.open)return;uiTick-=dt;if(uiTick>0)return;uiTick=1;if(HOME_TABS.has(UI.tab)&&UI.home!==atHome()){renderUI();return;}if(UI.tab==='island'||UI.tab==='fleet'){const anyT=document.querySelector('#uiBody [data-timer]');if(anyT)renderUI();}}
+/* ---------- building and training happen only at your own island ---------- */
+const HOME_TABS=new Set(['island','army','fleet']),HOME_ACTS=new Set(['build','upgrade','defBuild','defUp','wallUp','recruit','train','mv','shipUp','sail','fig','flagship','scrap','shipBuild']);
+function atHome(){const il=ON.myIsl;if(!il||!ON.me||RAID.on)return false;const R=il.r+260,hv=homeVessel();if(Math.hypot(hv.x-il.x,hv.z-il.z)<R)return true;
+  if(mode==='foot'&&land&&land.cap&&land.cap.g.parent){const w=capWorld();return Math.hypot(w.x-il.x,w.z-il.z)<R;}return false;}
+function awayCard(){return`<div class="away">${icoSVG('home')}<div class="tx"><b>أنت بعيد عن جزيرتك</b><span>البناء والتطوير والتجنيد يصير وأنت في جزيرتك.</span></div>
+  <div class="row2"><button class="sbtn gold" data-a="goHome">ارجع الحين</button><button class="sbtn" data-a="navHome">وجّهني لها</button></div></div>`;}
+/* standing next to one of your buildings: a card to upgrade or rush it */
+function nearMyBuilding(){if(mode!=='foot'||!land||!land.cap||!ON.me)return null;const il=ON.myIsl;if(!il||land.il!==il||!il.lay)return null;const w=capWorld();let best=null,bd=1e9;
+  for(const k in ON.me.bld){const p=il.lay.plots[k],b=ON.me.bld[k];if(!p||!SH.BLD[b.t])continue;const d=Math.hypot(p.x-w.x,p.z-w.z)-(p.r||6);if(d<6&&d<bd){bd=d;best={col:'bld',k:+k,name:SH.BLD[b.t].ar};}}
+  for(const k in ON.me.def){const b=ON.me.def[k],dd=SH.DEF[b.t];if(!dd||!/^(land|gate)$/.test(dd.spot))continue;const p=spotPos(il,k);if(!p)continue;const d=Math.hypot(p.x-w.x,p.z-w.z)-3;if(d<4&&d<bd){bd=d;best={col:'def',k,name:dd.ar};}}
+  return best;}
+function bldCard(nb){const now=srvNow(),isB=nb.col==='bld',b=isB?ON.me.bld[nb.k]:ON.me.def[nb.k];if(!b)return;const d=isB?SH.BLD[b.t]:SH.DEF[b.t],cl=SH.castleL(ON.me),eff=e=>isB?bldEffect(b.t,e):defEffect(b.t,e);
+  const title=d.ar+' · م'+b.l;let html=`<p class="mut">${eff(b.l)}</p>`;
+  if(b.done>now){const g=SH.speedCost((b.done-now)/1000);confirmBox(title,html+`<p>${icoSVG('hammer')} يتبنى… ${fmtT((b.done-now)/1000)}</p>`,'سرّع بـ '+g+' ذهب',()=>act({t:'speed',col:nb.col,key:nb.k}).catch(()=>{}));return;}
+  if(b.l>=d.max){confirmBox(title,html+'<p>وصل أعلى مستوى.</p>','تمام',null);return;}
+  if((!isB||b.t!=='castle')&&b.l+1>cl){confirmBox(title,html+'<p>طوّر القلعة أول عشان تطوّره.</p>','تمام',null);return;}
+  const nx=d.cost(b.l+1);html+=`<p>المستوى ${b.l+1}: <span class="mut">${eff(b.l+1)}</span></p><p>${costHTML(nx)}</p>`;
+  confirmBox(title,html,'طوّر',()=>act(isB?{t:'upgrade',plot:nb.k}:{t:'defUpgrade',spot:nb.k}).then(()=>banner('🔨 بدأ التطوير',1400)).catch(()=>{}));}
 /* ---------- island tab ---------- */
 function bldRows(){const me=ON.me,now=srvNow(),cl=SH.castleL(me);let h='';const keys=Object.keys(me.bld).map(Number).sort((a,b)=>a-b);
   for(const k of keys){const b=me.bld[k],d=SH.BLD[b.t];if(!d)continue;const busy=b.done>now,nx=b.l<d.max?d.cost(b.l+1):null,lock=b.t!=='castle'&&b.l+1>cl;
@@ -73,7 +96,6 @@ function tabIsland(){const me=ON.me,now=srvNow(),cl=SH.castleL(me),r=resNow(),ra
   let h=`<div class="hdr"><div>${icoSVG('castle')} <b>قلعة م${cl}</b> · ${icoSVG('pop')} ${Math.floor(r.pop)}/${me.popCap} · ${icoSVG('hammer')} بنّاؤون ${SH.busyBuilders(me,now)}/${SH.builders(me)}</div>
     <div class="mut">الإنتاج بالساعة: ${SH.RES.map(k=>icoSVG(RES_ICON[k],'i-'+RES_ICON[k])+Math.round((rates[k]||0)*60)).join(' ')} · السعة ${fmtN(me.cap)}</div>
     ${me.shield>now?`<div class="ok">${icoSVG('shield')} جزيرتك محمية بدرع ${fmtT((me.shield-now)/1000)}</div>`:''}</div>`;
-  h+=`<div class="row2"><button class="sbtn" data-a="goHome">${icoSVG('home')} ارجع لجزيرتي</button></div>`;
   h+='<h2>المباني</h2>'+bldRows();
   h+='<h2>بناء جديد</h2>';for(const t of SH.BLD_ORDER){const d=SH.BLD[t];if(d.fixed!=null)continue;const n=SH.countOf(me,t),mx=d.count(cl),c=d.cost(1),lk=d.req&&cl<d.req;
     h+=`<div class="srow"><div class="ic">${icoSVG(bldIcon(t))}</div><div class="tx"><b>${d.ar}</b> <span class="mut">${n}/${mx}</span><br><span class="mut">${d.d}</span></div><button class="sbtn" data-a="build" data-t="${t}" ${lk||n>=mx||!canPay(c)?'disabled':''}>${lk?'قلعة م'+d.req:n>=mx?'الحد':costHTML(c)}</button></div>`;}
@@ -231,6 +253,7 @@ $('uiBody').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if
   const go=(m,okMsg)=>act(m).then(()=>{if(okMsg)banner(okMsg,1500);}).catch(()=>{});
   switch(a){
     case'goHome':goHome();break;
+    case'navHome':{const il=ON.myIsl;if(il){setNav(il.x+Math.cos(il.harborA)*(shoreR(il,il.harborA)+60),il.z+Math.sin(il.harborA)*(shoreR(il,il.harborA)+60),'جزيرتي');uiClose();}break;}
     case'build':{const k=freePlot();if(k<0){banner('ما فيه مكان فاضي',1400);break;}go({t:'build',plot:k,type:d.t},'🔨 بدأ البناء');break;}
     case'upgrade':go({t:'upgrade',plot:+d.k},'🔨 بدأ التطوير');break;
     case'speed':go({t:'speed',col:d.col,key:d.col==='bld'?+d.k:d.k});break;
@@ -279,8 +302,9 @@ $('profCard').addEventListener('click',e=>{const b=e.target.closest('[data-a]');
   else if(d.a==='visit'){const il=islandOfPlayer(d.id);if(il){setNav(il.x+Math.cos(il.harborA)*(shoreR(il,il.harborA)+60),il.z+Math.sin(il.harborA)*(shoreR(il,il.harborA)+60),il.name);closeProfile();uiClose();}}});
 $('cfOk').addEventListener('click',()=>{const f=CONFIRM;confirmClose();if(f)f();});$('cfNo').addEventListener('click',confirmClose);
 /* ---- HUD actions near islands: home build menu, visiting / raiding other captains ---- */
-function homeAction(){if(!playing||!ON.me||RAID.on)return null;const il=ON.myIsl;if(!il)return null;const hv=homeVessel(),d=Math.hypot(hv.x-il.base.x,hv.z-il.base.z);
-  if(d<il.r+180)return{label:'🏰 جزيرتي',fn:()=>uiOpen('island')};return null;}
+function homeAction(){if(!playing||!ON.me||RAID.on)return null;const il=ON.myIsl;if(!il)return null;
+  const nb=nearMyBuilding();if(nb)return{label:'🔨 '+nb.name,fn:()=>bldCard(nb)};
+  if(atHome())return{label:'🏰 جزيرتي',fn:()=>uiOpen('island')};return null;}
 function nearPlayerIsland(){const hv=homeVessel();let best=null,bd=1e9;for(const il of PISL.values()){if(!il.pid||il.pid===ON.me.id)continue;const d=Math.hypot(hv.x-il.x,hv.z-il.z)-il.r;if(d<520&&d<bd){bd=d;best=il;}}return best;}
 function raidAction(){if(!playing||!ON.me||RAID.on||mode==='board')return null;const il=nearPlayerIsland();if(!il)return null;const pp=ON.pl.get(il.pid);if(!pp)return null;const rel=relOf(pp);
   if(rel==='clan')return null;if(pp.shield&&pp.shield>srvNow()&&!ON.me.logs.some(e=>e.k==='def'&&e.byId===pp.id&&!e.rev&&srvNow()-e.t<24*3600e3))return{label:'🛡 '+pp.name+' محمي '+fmtT((pp.shield-srvNow())/1000),fn:()=>openProfile(pp.id)};

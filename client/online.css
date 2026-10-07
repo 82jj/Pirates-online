@@ -94,3 +94,5 @@ input,textarea,select{-webkit-user-select:text;user-select:text;touch-action:man
 .btn.alt{background:#2E5A3A;box-shadow:0 4px 0 #1A3A22}
 .msg{color:#8E241E;font-weight:800;min-height:1.4em;margin:6px 0 0}
 .card details{text-align:right;margin-top:10px;font-size:13.5px}.card summary{cursor:pointer;font-weight:800;color:#5A1712}
+.away{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:6px 0 10px;padding:10px 12px;border-radius:12px;background:rgba(140,106,38,.14);border:1px solid rgba(140,106,38,.4)}
+.away>.ic{width:28px;height:28px;color:#8C6A26;flex:none}.away .tx{flex:1;min-width:60%;display:flex;flex-direction:column;gap:2px;font-size:13.5px}.away .row2{margin:0;width:100%}

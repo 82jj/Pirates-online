@@ -72,7 +72,7 @@ function onWelcome(){$('lgWait').classList.remove('hide');$('lgForm').classList.
   if(first){startOnline();}
   syncFleet(first);onClan();menuBadge();for(const e of ON.evList||[])evAdd(e);
   if(first&&ON.myIsl&&ON.myIsl.base&&P){const B=ON.myIsl.base;camYaw=Math.atan2(B.x-P.x,B.z-P.z);camPitch=.3;}
-  $('start').classList.add('hide');playing=true;paused=false;
+  $('start').classList.add('hide');dropFocus();playing=true;paused=false;
   const ml=ON.me.logs.filter(e=>e.k==='def'&&e.t>(ON.me.logSeen||0));if(ml.length)setTimeout(()=>banner('📜 انهجمت جزيرتك '+ml.length+' مرة وأنت غايب — شوف السجل',3800),1500);
   ON.unread.logs=ON.me.logs.filter(e=>e.t>(ON.me.logSeen||0)).length;menuBadge();}
 function onMe(old){if(!old)return;syncFleet(false);baseRefreshMine();uiRefresh();menuBadge();}

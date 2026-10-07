@@ -9,6 +9,7 @@ const DB_FILE=path.join(DATA_DIR,'world.json');
 const PUBLIC=path.join(__dirname,'public');
 const now=()=>Date.now();
 const H=3600e3,MIN=60e3;
+const TEST_ANYWHERE=!!process.env.TEST_ANYWHERE;
 const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 const isInt=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b;
 const num=(v,a,b,d)=>{v=+v;return Number.isFinite(v)?clampN(v,a,b):d;};
@@ -91,24 +92,28 @@ on('me',(c)=>{pushMe(needP(c));});
 /* ---- building ---- */
 function plotOk(k){return isInt(k,0,SH.LAYOUT.plots-1);}
 function spotOk(s){const m=/^([a-z]+)(\d+)$/.exec(s||'');return!!m&&SH.LAYOUT[m[1]]!=null&&+m[2]<SH.LAYOUT[m[1]]?m[1]:null;}
+/* island development happens only at the captain's own island: his ship near it, or him walking on it */
+function atHome(c,p){const a=c.pos;if(!a||now()-c.posT>120000||a[12]===1||p.slot==null)return false;const R=SH.slotPos(p.slot).r+320;
+  return homeDist(p,a[0],a[1])<R||(a[4]===1&&homeDist(p,a[7],a[9])<R);}
+function needHome(c,p){if(!TEST_ANYWHERE&&!atHome(c,p))fail('ارجع لجزيرتك عشان تبني وتطوّر');}
 function needBuilder(p,t){if(SH.busyBuilders(p,t)>=SH.builders(p))fail('كل البنّائين مشغولين؛ انتظر أو سرّع بناءً');}
-on('build',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const k=m.plot,type=m.type,d=SH.BLD[type];
+on('build',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const k=m.plot,type=m.type,d=SH.BLD[type];
   if(!plotOk(k)||k<2||!d||d.fixed!=null)fail('مكان غير صالح');if(p.bld[k])fail('المكان مشغول');const cl=SH.castleL(p);
   if(d.req&&cl<d.req)fail('يحتاج قلعة مستوى '+d.req);if(SH.countOf(p,type)>=d.count(cl))fail('وصلت الحد الأعلى لهذا المبنى؛ طوّر القلعة');
   needBuilder(p,t);const cost=d.cost(1);if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');SH.pay(p,cost);p.bld[k]={t:type,l:1,done:t+d.time(1)*1000};touch();pushMe(p);pushWorld(p);});
-on('upgrade',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const b=plotOk(m.plot)&&p.bld[m.plot];if(!b)fail('ما فيه مبنى');const d=SH.BLD[b.t];
+on('upgrade',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const b=plotOk(m.plot)&&p.bld[m.plot];if(!b)fail('ما فيه مبنى');const d=SH.BLD[b.t];
   if(b.done>t)fail('المبنى قيد البناء');if(b.l>=d.max)fail('أعلى مستوى');if(b.t!=='castle'&&b.l+1>SH.castleL(p))fail('طوّر القلعة أولاً');
   needBuilder(p,t);const cost=d.cost(b.l+1);if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');SH.pay(p,cost);b.l++;b.done=t+d.time(b.l)*1000;touch();pushMe(p);pushWorld(p);});
-on('defBuild',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const kind=spotOk(m.spot),d=SH.DEF[m.type];if(!kind||!d||d.spot!==kind)fail('مكان غير صالح');
+on('defBuild',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const kind=spotOk(m.spot),d=SH.DEF[m.type];if(!kind||!d||d.spot!==kind)fail('مكان غير صالح');
   if(p.def[m.spot])fail('المكان مشغول');const cl=SH.castleL(p);if(d.req&&cl<d.req)fail('يحتاج قلعة مستوى '+d.req);
   if(SH.countOf(p,m.type,'def')>=d.count(cl))fail('وصلت الحد الأعلى؛ طوّر القلعة');needBuilder(p,t);const cost=d.cost(1);if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');
   SH.pay(p,cost);p.def[m.spot]={t:m.type,l:1,done:t+d.time(1)*1000};touch();pushMe(p);pushWorld(p);});
-on('defUpgrade',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const b=spotOk(m.spot)&&p.def[m.spot];if(!b)fail('ما فيه دفاع هنا');const d=SH.DEF[b.t];
+on('defUpgrade',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const b=spotOk(m.spot)&&p.def[m.spot];if(!b)fail('ما فيه دفاع هنا');const d=SH.DEF[b.t];
   if(b.done>t)fail('قيد البناء');if(b.l>=d.max)fail('أعلى مستوى');if(b.l+1>SH.castleL(p))fail('طوّر القلعة أولاً');needBuilder(p,t);
   const cost=d.cost(b.l+1);if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');SH.pay(p,cost);b.l++;b.done=t+d.time(b.l)*1000;touch();pushMe(p);pushWorld(p);});
-on('defRemove',(c,m)=>{const p=needP(c);const b=spotOk(m.spot)&&p.def[m.spot];if(!b)fail('ما فيه دفاع هنا');delete p.def[m.spot];touch();pushMe(p);pushWorld(p);});
-on('bldRemove',(c,m)=>{const p=needP(c);const b=plotOk(m.plot)&&m.plot>1&&p.bld[m.plot];if(!b)fail('ما تقدر تشيله');delete p.bld[m.plot];touch();pushMe(p);pushWorld(p);});
-on('wallUp',(c)=>{const p=needP(c),t=now();accrue(p,t);if(p.wallDone>t)fail('السور قيد البناء');if(p.wall>=SH.WALL.max)fail('أعلى مستوى');if(p.wall+1>SH.castleL(p))fail('طوّر القلعة أولاً');
+on('defRemove',(c,m)=>{const p=needP(c);needHome(c,p);const b=spotOk(m.spot)&&p.def[m.spot];if(!b)fail('ما فيه دفاع هنا');delete p.def[m.spot];touch();pushMe(p);pushWorld(p);});
+on('bldRemove',(c,m)=>{const p=needP(c);needHome(c,p);const b=plotOk(m.plot)&&m.plot>1&&p.bld[m.plot];if(!b)fail('ما تقدر تشيله');delete p.bld[m.plot];touch();pushMe(p);pushWorld(p);});
+on('wallUp',(c)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);if(p.wallDone>t)fail('السور قيد البناء');if(p.wall>=SH.WALL.max)fail('أعلى مستوى');if(p.wall+1>SH.castleL(p))fail('طوّر القلعة أولاً');
   needBuilder(p,t);const cost=SH.WALL.cost(p.wall+1);if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');SH.pay(p,cost);p.wall++;p.wallDone=t+SH.WALL.time(p.wall)*1000;touch();pushMe(p);pushWorld(p);});
 on('speed',(c,m)=>{const p=needP(c),t=now();accrue(p,t);let b=null,set=null;
   if(m.col==='bld'&&plotOk(m.key))b=p.bld[m.key];else if(m.col==='def'&&spotOk(m.key))b=p.def[m.key];else if(m.col==='wall'){if(p.wallDone>t){const cost=SH.speedCost((p.wallDone-t)/1000);if(p.res.gold<cost)fail('الذهب ما يكفي');p.res.gold-=cost;p.wallDone=t;touch();pushMe(p);pushWorld(p);return;}}
@@ -118,30 +123,30 @@ on('speed',(c,m)=>{const p=needP(c),t=now();accrue(p,t);let b=null,set=null;
 function shipById(p,id){return p.ships.find(s=>s.id===id);}
 function garrisonSpace(p,t){return SH.armyCap(p,t)-SH.spaceOf(p.garrison);}
 function shipSpace(s){return SH.crewCap(s)-SH.spaceOf(s.crew);}
-on('recruit',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const d=SH.PUNITS[m.type],n=m.n|0;if(!d||n<1||n>30)fail('غير صالح');
+on('recruit',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const d=SH.PUNITS[m.type],n=m.n|0;if(!d||n<1||n>30)fail('غير صالح');
   if(d.tier>SH.tavernL(p,t))fail('تحتاج حانة مستوى '+d.tier);const cost={};for(const r in d.cost)cost[r]=d.cost[r]*n;if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');
   let dest;if(m.to==='g'){if(garrisonSpace(p,t)<d.sp*n)fail('الثكنة ممتلئة');dest=p.garrison;}else{const s=shipById(p,m.to||p.flagship);if(!s||s.done>t)fail('السفينة غير جاهزة');if(shipSpace(s)<d.sp*n)fail('السفينة ممتلئة');dest=s.crew;}
   SH.pay(p,cost);dest[m.type]=(dest[m.type]||0)+n;touch();pushMe(p);});
-on('train',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const d=SH.DUNITS[m.type],n=m.n|0;if(!d||n<1||n>30)fail('غير صالح');
+on('train',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const d=SH.DUNITS[m.type],n=m.n|0;if(!d||n<1||n>30)fail('غير صالح');
   if(d.tier>SH.barracksL(p,t))fail('تحتاج ثكنة مستوى '+d.tier);if(garrisonSpace(p,t)<d.sp*n)fail('الثكنة ممتلئة');const cost={};for(const r in d.cost)cost[r]=d.cost[r]*n;if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');
   SH.pay(p,cost);p.garrison[m.type]=(p.garrison[m.type]||0)+n;touch();pushMe(p);});
-on('move',(c,m)=>{const p=needP(c),t=now();const d=SH.unitDef(m.type),n=m.n|0;if(!d||n<1||n>60)fail('غير صالح');
+on('move',(c,m)=>{const p=needP(c),t=now();needHome(c,p);const d=SH.unitDef(m.type),n=m.n|0;if(!d||n<1||n>60)fail('غير صالح');
   const from=m.from==='g'?p.garrison:(shipById(p,m.from)||{}).crew,toShip=m.to!=='g'&&shipById(p,m.to),to=m.to==='g'?p.garrison:toShip&&toShip.crew;
   if(!from||!to||from===to)fail('غير صالح');if((from[m.type]||0)<n)fail('العدد ما يكفي');if(toShip&&SH.DUNITS[m.type])fail('حرّاس الجزيرة ما يركبون السفن');if(toShip&&toShip.done>t)fail('السفينة غير جاهزة');
   if(m.to==='g'?garrisonSpace(p,t)<d.sp*n:shipSpace(toShip)<d.sp*n)fail('ما فيه مكان');
   from[m.type]-=n;if(!from[m.type])delete from[m.type];to[m.type]=(to[m.type]||0)+n;touch();pushMe(p);});
-on('dismiss',(c,m)=>{const p=needP(c);const n=m.n|0,from=m.from==='g'?p.garrison:(shipById(p,m.from)||{}).crew;if(!from||n<1||(from[m.type]||0)<n)fail('غير صالح');
+on('dismiss',(c,m)=>{const p=needP(c);needHome(c,p);const n=m.n|0,from=m.from==='g'?p.garrison:(shipById(p,m.from)||{}).crew;if(!from||n<1||(from[m.type]||0)<n)fail('غير صالح');
   from[m.type]-=n;if(!from[m.type])delete from[m.type];touch();pushMe(p);});
 /* ---- ships ---- */
-on('shipBuild',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const d=SH.SHIPS[m.type];if(!d)fail('غير صالح');if(SH.yardL(p,t)<d.yard)fail('يحتاج حوض سفن مستوى '+d.yard);
+on('shipBuild',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const d=SH.SHIPS[m.type];if(!d)fail('غير صالح');if(SH.yardL(p,t)<d.yard)fail('يحتاج حوض سفن مستوى '+d.yard);
   if(p.ships.length>=SH.fleetCap(p,t))fail('الأسطول ممتلئ؛ طوّر حوض السفن');if(p.ships.some(s=>s.done>t))fail('الحوض يبني سفينة الحين');if(!SH.canAfford(p,d.cost))fail('الموارد ما تكفي');
   SH.pay(p,d.cost);const s={id:'s'+(p.shipSeq++),t:m.type,up:{hull:0,guns:0,sails:0,crew:0},sail:p.ships[0]?p.ships[0].sail:0,fig:0,crew:{},done:t+d.time*1000};p.ships.push(s);touch();pushMe(p);});
-on('shipUp',(c,m)=>{const p=needP(c),t=now();accrue(p,t);const s=shipById(p,m.id);if(!s||!SH.SHIP_UP[m.part])fail('غير صالح');const l=(s.up[m.part]||0)+1;if(l>SH.SHIP_UP_MAX)fail('أعلى مستوى');
+on('shipUp',(c,m)=>{const p=needP(c),t=now();needHome(c,p);accrue(p,t);const s=shipById(p,m.id);if(!s||!SH.SHIP_UP[m.part])fail('غير صالح');const l=(s.up[m.part]||0)+1;if(l>SH.SHIP_UP_MAX)fail('أعلى مستوى');
   if(l>SH.yardL(p,t))fail('طوّر حوض السفن أولاً');const cost=SH.shipUpCost(s.t,m.part,l);if(!SH.canAfford(p,cost))fail('الموارد ما تكفي');SH.pay(p,cost);s.up[m.part]=l;touch();pushMe(p);if(s.id===p.flagship)pushWorld(p);});
-on('shipStyle',(c,m)=>{const p=needP(c);const s=shipById(p,m.id);if(!s)fail('غير صالح');if(m.sail!=null){if(!isInt(m.sail,0,SH.SAILS.length-1))fail('غير صالح');s.sail=m.sail;}
+on('shipStyle',(c,m)=>{const p=needP(c);needHome(c,p);const s=shipById(p,m.id);if(!s)fail('غير صالح');if(m.sail!=null){if(!isInt(m.sail,0,SH.SAILS.length-1))fail('غير صالح');s.sail=m.sail;}
   if(m.fig!=null){if(!isInt(m.fig,0,SH.FIGS.length-1))fail('غير صالح');s.fig=m.fig;}touch();pushMe(p);if(s.id===p.flagship)pushWorld(p);});
-on('flagship',(c,m)=>{const p=needP(c),t=now();const s=shipById(p,m.id);if(!s||s.done>t)fail('السفينة غير جاهزة');p.flagship=s.id;touch();pushMe(p);pushWorld(p);});
-on('shipScrap',(c,m)=>{const p=needP(c),t=now();const s=shipById(p,m.id);if(!s||p.ships.length<2||s.id===p.flagship)fail('ما تقدر تفكك هذي السفينة');
+on('flagship',(c,m)=>{const p=needP(c),t=now();needHome(c,p);const s=shipById(p,m.id);if(!s||s.done>t)fail('السفينة غير جاهزة');p.flagship=s.id;touch();pushMe(p);pushWorld(p);});
+on('shipScrap',(c,m)=>{const p=needP(c),t=now();needHome(c,p);const s=shipById(p,m.id);if(!s||p.ships.length<2||s.id===p.flagship)fail('ما تقدر تفكك هذي السفينة');
   for(const u in s.crew){const d=SH.unitDef(u),k=Math.min(s.crew[u],Math.floor(garrisonSpace(p,t)/(d?d.sp:1)));if(k>0)p.garrison[u]=(p.garrison[u]||0)+k;}
   const d=SH.SHIPS[s.t];for(const r in d.cost)p.res[r]=(p.res[r]||0)+Math.floor(d.cost[r]*.3);p.ships=p.ships.filter(q=>q!==s);touch();pushMe(p);});
 /* ---- flag ---- */

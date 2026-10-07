@@ -237,6 +237,8 @@ input,textarea,select{-webkit-user-select:text;user-select:text;touch-action:man
 .btn.alt{background:#2E5A3A;box-shadow:0 4px 0 #1A3A22}
 .msg{color:#8E241E;font-weight:800;min-height:1.4em;margin:6px 0 0}
 .card details{text-align:right;margin-top:10px;font-size:13.5px}.card summary{cursor:pointer;font-weight:800;color:#5A1712}
+.away{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:6px 0 10px;padding:10px 12px;border-radius:12px;background:rgba(140,106,38,.14);border:1px solid rgba(140,106,38,.4)}
+.away>.ic{width:28px;height:28px;color:#8C6A26;flex:none}.away .tx{flex:1;min-width:60%;display:flex;flex-direction:column;gap:2px;font-size:13.5px}.away .row2{margin:0;width:100%}
 
 </style>
 </head>
@@ -613,7 +615,7 @@ function badgeSVG(n,ring,glyph,fill){const P=ICN[n];let h=`<svg class="mb" viewB
   return h+'</g></svg>';}
 
 const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:true});
-renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));
+renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));
 renderer.setSize(innerWidth,innerHeight,false);
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
@@ -876,8 +878,8 @@ function atmoFrame(sun,moon,wx,fwd2,focus,t){
   trLookup(ATMO.h0,e,_t3);for(let i=0;i<3;i++)_t3[i]=Math.min(1,_t3[i]*ATMO.wb[i]);
   const sc=[toSRGB1(_t3[0]),toSRGB1(_t3[1]),toSRGB1(_t3[2])],mx=Math.max(sc[0],sc[1],sc[2],1e-4);AT.sunCol=[sc[0]/mx,sc[1]/mx,sc[2]/mx];
   const nk=AT.nightK*(1-.6*AT.gray);
-  AU.uNightSky=[(.01+.025*moonUp)*nk,(.016+.04*moonUp)*nk,(.03+.08*moonUp)*nk];
-  AT.useSun=e>-.035;AT.LD=AT.useSun?sun:moon;
+  AU.uNightSky=[(.03+.03*moonUp)*nk,(.045+.045*moonUp)*nk,(.085+.09*moonUp)*nk];
+  AT.useSun=e>-.035;AT.LD=AT.useSun?sun:(moon[1]>.28?moon:[.33,.86,.39]);
   const sunK=Math.pow(smooth(-.035,.3,e),.7)*(1-.55*AT.gray)*(1-.3*wx.storm);
   AT.LC=AT.useSun?[AT.sunCol[0]*sunK,AT.sunCol[1]*sunK,AT.sunCol[2]*sunK]:[.16*moonUp,.19*moonUp,.27*moonUp];
   skyAvg(_s3);AT.zen=skySample(0,1.5,[0,0,0]);
@@ -885,9 +887,9 @@ function atmoFrame(sun,moon,wx,fwd2,focus,t){
   const fl=Math.hypot(fwd2[0],fwd2[1])||1,sl=Math.hypot(sun[0],sun[2])||1,cphi=clamp((fwd2[0]*sun[0]+fwd2[1]*sun[2])/(fl*sl),-1,1);
   AT.fog=wxGrade(skySample(Math.acos(cphi),.035,[0,0,0]));
   const L=AT.LD,tt=(CLOUD_H-focus[1])/Math.max(L[1],.12);AT.csF=1-.62*cloudDJS(focus[0]+L[0]*tt,focus[2]+L[2]*tt,AT.cover)*smooth(-.02,.1,L[1]);
-  AT.lightInt=AT.useSun?1.25*Math.pow(smooth(-.035,.3,e),.7)*(1-.5*AT.gray)*AT.csF*(1-.3*wx.storm):.45*moonUp*AT.csF*(1-.7*AT.gray);
-  AT.hemiI=(.25+.6*AT.dayK)*(1+.35*AT.gray)*(1-.3*wx.storm)+.1*AT.nightK;
-  AT.sunInt=AT.sunVis*(1-.6*AT.gray);AT.moonInt=AT.nightK*moonUp*(1-.8*AT.gray);AT.light=(.1+.9*AT.dayK)*(1-.3*wx.storm)*(1-.2*AT.gray)+.05*AT.nightK*moonUp;
+  AT.lightInt=AT.useSun?1.25*Math.pow(smooth(-.035,.3,e),.7)*(1-.5*AT.gray)*AT.csF*(1-.3*wx.storm):(.34+.3*moonUp)*AT.csF*(1-.5*AT.gray);
+  AT.hemiI=(.25+.6*AT.dayK)*(1+.35*AT.gray)*(1-.3*wx.storm)+.5*AT.nightK;
+  AT.sunInt=AT.sunVis*(1-.6*AT.gray);AT.moonInt=AT.nightK*moonUp*(1-.8*AT.gray);AT.light=(.1+.9*AT.dayK)*(1-.3*wx.storm)*(1-.2*AT.gray)+(.1+.08*moonUp)*AT.nightK;
   /* cloud colours: sun light reaching the cloud layer is less reddened than at sea level */
   trLookup(CLOUD_H,e,_t3);for(let i=0;i<3;i++)_t3[i]=Math.min(1,_t3[i]*ATMO.wb[i]);const cc=[toSRGB1(_t3[0]),toSRGB1(_t3[1]),toSRGB1(_t3[2])],cm=Math.max(cc[0],cc[1],cc[2],1e-4);
   const ck=Math.pow(smooth(-.06,.25,e),.6)*(1-.5*AT.gray)*(1-.4*wx.storm);
@@ -992,10 +994,10 @@ function updateSky(dt,focus){
   keyLight.intensity=AT.lightInt;
   keyLight.position.set(focus.x+ld[0]*400,focus.y+ld[1]*400,focus.z+ld[2]*400);keyLight.target.position.set(focus.x,focus.y,focus.z);
   const a=AT.ambC,nb=nightK*(1-AT.gray*.5);
-  hemi.color.setRGB(Math.max(a[0]*1.7,.2*nb),Math.max(a[1]*1.55,.26*nb),Math.max(a[2]*1.35,.4*nb));
-  hemi.groundColor.setRGB(.2,.24,.2).multiplyScalar(.25+.75*dayK);
+  hemi.color.setRGB(Math.max(a[0]*1.7,.36*nb),Math.max(a[1]*1.55,.45*nb),Math.max(a[2]*1.35,.66*nb));
+  hemi.groundColor.setRGB(.2,.24,.2).multiplyScalar(.5+.5*dayK);
   hemi.intensity=AT.hemiI+WX.flash*1.5;
-  let fc=new THREE.Color(AT.fog[0],AT.fog[1],AT.fog[2]),fn=lerp(110,220,dayK),ff=lerp(650,1800,dayK)*(1-WX.rain*.45-WX.storm*.2);
+  let fc=new THREE.Color(Math.max(AT.fog[0],.05*nightK),Math.max(AT.fog[1],.072*nightK),Math.max(AT.fog[2],.12*nightK)),fn=lerp(110,220,dayK),ff=lerp(650,1800,dayK)*(1-WX.rain*.45-WX.storm*.2);
   if(underwater){const dp=clamp((waveH(camera.position.x,camera.position.z,T)-camera.position.y)/24,0,1);fc=C(0x1F8DAE).lerp(C(0x0A3C56),dp).multiplyScalar(.16+.84*dayK);fn=3;ff=lerp(95,62,dp);}
   if(inCave){fc=C(0x050403);fn=8;ff=70;hemi.intensity*=.15;keyLight.intensity=0;}
   scene.fog.color.copy(fc);scene.fog.near=fn;scene.fog.far=ff;
@@ -4580,7 +4582,7 @@ function onWelcome(){$('lgWait').classList.remove('hide');$('lgForm').classList.
   if(first){startOnline();}
   syncFleet(first);onClan();menuBadge();for(const e of ON.evList||[])evAdd(e);
   if(first&&ON.myIsl&&ON.myIsl.base&&P){const B=ON.myIsl.base;camYaw=Math.atan2(B.x-P.x,B.z-P.z);camPitch=.3;}
-  $('start').classList.add('hide');playing=true;paused=false;
+  $('start').classList.add('hide');dropFocus();playing=true;paused=false;
   const ml=ON.me.logs.filter(e=>e.k==='def'&&e.t>(ON.me.logSeen||0));if(ml.length)setTimeout(()=>banner('📜 انهجمت جزيرتك '+ml.length+' مرة وأنت غايب — شوف السجل',3800),1500);
   ON.unread.logs=ON.me.logs.filter(e=>e.t>(ON.me.logSeen||0)).length;menuBadge();}
 function onMe(old){if(!old)return;syncFleet(false);baseRefreshMine();uiRefresh();menuBadge();}
@@ -5419,14 +5421,37 @@ const UI={open:false,tab:'island',sub:'members',armyTo:'ship',armyShip:null,flee
 const TABS=[['island','home','جزيرتي'],['army','swords','الجيش'],['fleet','ship','الأسطول'],['flag','flag','العلم'],['clan','banner','الكلان'],['top','trophy','الترتيب'],['logs','scroll','السجل']];
 function uiOpen(tab){UI.open=true;if(tab)UI.tab=tab;$('ui').classList.remove('hide');if(UI.tab==='logs'){ON.unread.logs=0;netSend({t:'logsSeen'});}if(UI.tab==='clan'&&UI.sub==='chat')ON.unread.chat=0;
   if(UI.tab==='top')netSend({t:'top'});if(UI.tab==='clan'&&!ON.clan)netSend({t:'clanList',q:UI.clanQ});renderUI();menuBadge();}
-function uiClose(){UI.open=false;$('ui').classList.add('hide');UI.prof=null;}
+function uiClose(){UI.open=false;$('ui').classList.add('hide');UI.prof=null;dropFocus();}
+/* iOS keeps a hidden text field focused (login, chat) and then shows its Paste bubble on every long press: drop that focus as soon as the game itself is touched */
+function dropFocus(){const a=document.activeElement;if(a&&a!==document.body&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))a.blur();}
+for(const ev of['touchstart','pointerdown'])document.addEventListener(ev,e=>{const t=e.target;if(t&&t.closest&&t.closest('.ov:not(.hide)'))return;dropFocus();},{capture:true,passive:true});
 function uiRefresh(what){if(!UI.open)return;if(what==='chat'&&!(UI.tab==='clan'))return;if(what==='players'&&!(UI.tab==='top'||UI.tab==='clan'||UI.tab==='logs'))return;renderUI();}
 function keepInputs(f){const a=document.activeElement,id=a&&a.id,v={};$('uiBody').querySelectorAll('input,textarea,select').forEach(e=>{if(e.id)v[e.id]=e.type==='checkbox'?e.checked:e.value;});
   const st=$('uiBody').scrollTop;f();for(const id in v){const e=document.getElementById(id);if(e){if(e.type==='checkbox')e.checked=v[id];else e.value=v[id];}}if(id){const e=document.getElementById(id);if(e)e.focus();}$('uiBody').scrollTop=st;}
 function renderUI(){if(!UI.open||!ON.me)return;$('uiTabs').innerHTML=TABS.map(([k,ic,n])=>`<button class="tb${UI.tab===k?' on':''}" data-tab="${k}">${icoSVG(ic)}<span>${n}</span>${k==='logs'&&(ON.unread.logs||ON.me.allyIn.length)?'<i class="dot"></i>':''}${k==='clan'&&ON.unread.chat?'<i class="dot"></i>':''}</button>`).join('');
-  keepInputs(()=>{let h='';try{h=({island:tabIsland,army:tabArmy,fleet:tabFleet,flag:tabFlag,clan:tabClan,top:tabTop,logs:tabLogs})[UI.tab]();}catch(e){console.error(e);h='<p>صار خطأ</p>';}$('uiBody').innerHTML=h;});
+  UI.home=atHome();const gate=HOME_TABS.has(UI.tab)&&!UI.home;
+  keepInputs(()=>{let h='';try{h=({island:tabIsland,army:tabArmy,fleet:tabFleet,flag:tabFlag,clan:tabClan,top:tabTop,logs:tabLogs})[UI.tab]();}catch(e){console.error(e);h='<p>صار خطأ</p>';}
+    $('uiBody').innerHTML=(gate?awayCard():'')+h;if(gate)$('uiBody').querySelectorAll('[data-a]').forEach(b=>{if(HOME_ACTS.has(b.dataset.a))b.disabled=true;});});
   if(UI.tab==='flag')flagEditorInit();if(UI.tab==='clan'&&UI.sub==='chat'){const cl=$('chatLog');if(cl)cl.scrollTop=cl.scrollHeight;}}
-let uiTick=0;function uiTimers(dt){if(!UI.open)return;uiTick-=dt;if(uiTick>0)return;uiTick=1;if(UI.tab==='island'||UI.tab==='fleet'){const anyT=document.querySelector('#uiBody [data-timer]');if(anyT)renderUI();}}
+let uiTick=0;function uiTimers(dt){if(!UI.open)return;uiTick-=dt;if(uiTick>0)return;uiTick=1;if(HOME_TABS.has(UI.tab)&&UI.home!==atHome()){renderUI();return;}if(UI.tab==='island'||UI.tab==='fleet'){const anyT=document.querySelector('#uiBody [data-timer]');if(anyT)renderUI();}}
+/* ---------- building and training happen only at your own island ---------- */
+const HOME_TABS=new Set(['island','army','fleet']),HOME_ACTS=new Set(['build','upgrade','defBuild','defUp','wallUp','recruit','train','mv','shipUp','sail','fig','flagship','scrap','shipBuild']);
+function atHome(){const il=ON.myIsl;if(!il||!ON.me||RAID.on)return false;const R=il.r+260,hv=homeVessel();if(Math.hypot(hv.x-il.x,hv.z-il.z)<R)return true;
+  if(mode==='foot'&&land&&land.cap&&land.cap.g.parent){const w=capWorld();return Math.hypot(w.x-il.x,w.z-il.z)<R;}return false;}
+function awayCard(){return`<div class="away">${icoSVG('home')}<div class="tx"><b>أنت بعيد عن جزيرتك</b><span>البناء والتطوير والتجنيد يصير وأنت في جزيرتك.</span></div>
+  <div class="row2"><button class="sbtn gold" data-a="goHome">ارجع الحين</button><button class="sbtn" data-a="navHome">وجّهني لها</button></div></div>`;}
+/* standing next to one of your buildings: a card to upgrade or rush it */
+function nearMyBuilding(){if(mode!=='foot'||!land||!land.cap||!ON.me)return null;const il=ON.myIsl;if(!il||land.il!==il||!il.lay)return null;const w=capWorld();let best=null,bd=1e9;
+  for(const k in ON.me.bld){const p=il.lay.plots[k],b=ON.me.bld[k];if(!p||!SHR.BLD[b.t])continue;const d=Math.hypot(p.x-w.x,p.z-w.z)-(p.r||6);if(d<6&&d<bd){bd=d;best={col:'bld',k:+k,name:SHR.BLD[b.t].ar};}}
+  for(const k in ON.me.def){const b=ON.me.def[k],dd=SHR.DEF[b.t];if(!dd||!/^(land|gate)$/.test(dd.spot))continue;const p=spotPos(il,k);if(!p)continue;const d=Math.hypot(p.x-w.x,p.z-w.z)-3;if(d<4&&d<bd){bd=d;best={col:'def',k,name:dd.ar};}}
+  return best;}
+function bldCard(nb){const now=srvNow(),isB=nb.col==='bld',b=isB?ON.me.bld[nb.k]:ON.me.def[nb.k];if(!b)return;const d=isB?SHR.BLD[b.t]:SHR.DEF[b.t],cl=SHR.castleL(ON.me),eff=e=>isB?bldEffect(b.t,e):defEffect(b.t,e);
+  const title=d.ar+' · م'+b.l;let html=`<p class="mut">${eff(b.l)}</p>`;
+  if(b.done>now){const g=SHR.speedCost((b.done-now)/1000);confirmBox(title,html+`<p>${icoSVG('hammer')} يتبنى… ${fmtT((b.done-now)/1000)}</p>`,'سرّع بـ '+g+' ذهب',()=>act({t:'speed',col:nb.col,key:nb.k}).catch(()=>{}));return;}
+  if(b.l>=d.max){confirmBox(title,html+'<p>وصل أعلى مستوى.</p>','تمام',null);return;}
+  if((!isB||b.t!=='castle')&&b.l+1>cl){confirmBox(title,html+'<p>طوّر القلعة أول عشان تطوّره.</p>','تمام',null);return;}
+  const nx=d.cost(b.l+1);html+=`<p>المستوى ${b.l+1}: <span class="mut">${eff(b.l+1)}</span></p><p>${costHTML(nx)}</p>`;
+  confirmBox(title,html,'طوّر',()=>act(isB?{t:'upgrade',plot:nb.k}:{t:'defUpgrade',spot:nb.k}).then(()=>banner('🔨 بدأ التطوير',1400)).catch(()=>{}));}
 /* ---------- island tab ---------- */
 function bldRows(){const me=ON.me,now=srvNow(),cl=SHR.castleL(me);let h='';const keys=Object.keys(me.bld).map(Number).sort((a,b)=>a-b);
   for(const k of keys){const b=me.bld[k],d=SHR.BLD[b.t];if(!d)continue;const busy=b.done>now,nx=b.l<d.max?d.cost(b.l+1):null,lock=b.t!=='castle'&&b.l+1>cl;
@@ -5443,7 +5468,6 @@ function tabIsland(){const me=ON.me,now=srvNow(),cl=SHR.castleL(me),r=resNow(),r
   let h=`<div class="hdr"><div>${icoSVG('castle')} <b>قلعة م${cl}</b> · ${icoSVG('pop')} ${Math.floor(r.pop)}/${me.popCap} · ${icoSVG('hammer')} بنّاؤون ${SHR.busyBuilders(me,now)}/${SHR.builders(me)}</div>
     <div class="mut">الإنتاج بالساعة: ${SHR.RES.map(k=>icoSVG(RES_ICON[k],'i-'+RES_ICON[k])+Math.round((rates[k]||0)*60)).join(' ')} · السعة ${fmtN(me.cap)}</div>
     ${me.shield>now?`<div class="ok">${icoSVG('shield')} جزيرتك محمية بدرع ${fmtT((me.shield-now)/1000)}</div>`:''}</div>`;
-  h+=`<div class="row2"><button class="sbtn" data-a="goHome">${icoSVG('home')} ارجع لجزيرتي</button></div>`;
   h+='<h2>المباني</h2>'+bldRows();
   h+='<h2>بناء جديد</h2>';for(const t of SHR.BLD_ORDER){const d=SHR.BLD[t];if(d.fixed!=null)continue;const n=SHR.countOf(me,t),mx=d.count(cl),c=d.cost(1),lk=d.req&&cl<d.req;
     h+=`<div class="srow"><div class="ic">${icoSVG(bldIcon(t))}</div><div class="tx"><b>${d.ar}</b> <span class="mut">${n}/${mx}</span><br><span class="mut">${d.d}</span></div><button class="sbtn" data-a="build" data-t="${t}" ${lk||n>=mx||!canPay(c)?'disabled':''}>${lk?'قلعة م'+d.req:n>=mx?'الحد':costHTML(c)}</button></div>`;}
@@ -5601,6 +5625,7 @@ $('uiBody').addEventListener('click',e=>{const b=e.target.closest('[data-a]');if
   const go=(m,okMsg)=>act(m).then(()=>{if(okMsg)banner(okMsg,1500);}).catch(()=>{});
   switch(a){
     case'goHome':goHome();break;
+    case'navHome':{const il=ON.myIsl;if(il){setNav(il.x+Math.cos(il.harborA)*(shoreR(il,il.harborA)+60),il.z+Math.sin(il.harborA)*(shoreR(il,il.harborA)+60),'جزيرتي');uiClose();}break;}
     case'build':{const k=freePlot();if(k<0){banner('ما فيه مكان فاضي',1400);break;}go({t:'build',plot:k,type:d.t},'🔨 بدأ البناء');break;}
     case'upgrade':go({t:'upgrade',plot:+d.k},'🔨 بدأ التطوير');break;
     case'speed':go({t:'speed',col:d.col,key:d.col==='bld'?+d.k:d.k});break;
@@ -5649,8 +5674,9 @@ $('profCard').addEventListener('click',e=>{const b=e.target.closest('[data-a]');
   else if(d.a==='visit'){const il=islandOfPlayer(d.id);if(il){setNav(il.x+Math.cos(il.harborA)*(shoreR(il,il.harborA)+60),il.z+Math.sin(il.harborA)*(shoreR(il,il.harborA)+60),il.name);closeProfile();uiClose();}}});
 $('cfOk').addEventListener('click',()=>{const f=CONFIRM;confirmClose();if(f)f();});$('cfNo').addEventListener('click',confirmClose);
 /* ---- HUD actions near islands: home build menu, visiting / raiding other captains ---- */
-function homeAction(){if(!playing||!ON.me||RAID.on)return null;const il=ON.myIsl;if(!il)return null;const hv=homeVessel(),d=Math.hypot(hv.x-il.base.x,hv.z-il.base.z);
-  if(d<il.r+180)return{label:'🏰 جزيرتي',fn:()=>uiOpen('island')};return null;}
+function homeAction(){if(!playing||!ON.me||RAID.on)return null;const il=ON.myIsl;if(!il)return null;
+  const nb=nearMyBuilding();if(nb)return{label:'🔨 '+nb.name,fn:()=>bldCard(nb)};
+  if(atHome())return{label:'🏰 جزيرتي',fn:()=>uiOpen('island')};return null;}
 function nearPlayerIsland(){const hv=homeVessel();let best=null,bd=1e9;for(const il of PISL.values()){if(!il.pid||il.pid===ON.me.id)continue;const d=Math.hypot(hv.x-il.x,hv.z-il.z)-il.r;if(d<520&&d<bd){bd=d;best=il;}}return best;}
 function raidAction(){if(!playing||!ON.me||RAID.on||mode==='board')return null;const il=nearPlayerIsland();if(!il)return null;const pp=ON.pl.get(il.pid);if(!pp)return null;const rel=relOf(pp);
   if(rel==='clan')return null;if(pp.shield&&pp.shield>srvNow()&&!ON.me.logs.some(e=>e.k==='def'&&e.byId===pp.id&&!e.rev&&srvNow()-e.t<24*3600e3))return{label:'🛡 '+pp.name+' محمي '+fmtT((pp.shield-srvNow())/1000),fn:()=>openProfile(pp.id)};
@@ -5794,9 +5820,9 @@ let last=performance.now()/1000,wakeT=0;
 generateIslands();buildDepthTex();buildWrecks();
 for(const il of islands)if(Math.hypot(il.x,il.z)-il.r<1300)buildNow(il);
 startGame();netConnect();
-let dprNow=Math.min(devicePixelRatio||1,1.75),ftAvg=1/60,resT=0;
+let dprNow=Math.min(devicePixelRatio||1,2),ftAvg=1/60,resT=0;
 function adaptRes(rdt){if(rdt>.25||document.hidden)return;ftAvg+=(rdt-ftAvg)*.04;resT+=rdt;
-  if(resT>9&&ftAvg>1/38&&dprNow>1.01){dprNow=Math.max(1,dprNow-.15);renderer.setPixelRatio(dprNow);lw=0;resT=5;}}
+  if(resT>9&&ftAvg>1/30&&dprNow>1.36){dprNow=Math.max(1.35,dprNow-.15);renderer.setPixelRatio(dprNow);lw=0;resT=5;}}
 function loop(){
   requestAnimationFrame(loop);
   const now=performance.now()/1000,dt=Math.min(.05,now-last);adaptRes(now-last);last=now;
