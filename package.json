@@ -1,0 +1,14 @@
+{
+  "name": "pirates-online",
+  "version": "1.0.0",
+  "description": "قراصنة البحر أونلاين",
+  "private": true,
+  "scripts": {
+    "start": "node server/server.js",
+    "build": "python3 client/build.py",
+    "test": "node test/proto.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

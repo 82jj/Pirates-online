@@ -1,0 +1,7 @@
+node_modules/
+data/
+server/data/
+test/shots/
+test/three.min.js
+*.log
+__pycache__/
