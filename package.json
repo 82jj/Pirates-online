@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/server.js",
     "build": "python3 client/build.py",
-    "test": "node test/proto.js"
+    "test": "node test/proto.js",
+    "test:storage": "node --test test/storage*.test.js"
   },
   "engines": {
     "node": ">=18"

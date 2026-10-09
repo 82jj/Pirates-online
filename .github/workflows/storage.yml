@@ -1,0 +1,20 @@
+name: Storage safety
+on:
+  pull_request:
+  push:
+    branches: [main, fix/durable-world-storage]
+permissions:
+  contents: read
+jobs:
+  storage:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        node: [18, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: npm run test:storage
+      - run: node --check server/server.js

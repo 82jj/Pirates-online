@@ -4,8 +4,9 @@ const http=require('http'),fs=require('fs'),path=require('path'),crypto=require(
 const {WebSocketServer}=require('./vendor/ws');
 const SH=require('./shared.js');
 const PORT=+process.env.PORT||8080;
-const DATA_DIR=(()=>{for(const d of[process.env.DATA_DIR,'/data',path.join(__dirname,'data')]){if(!d)continue;try{fs.mkdirSync(d,{recursive:true});fs.accessSync(d,fs.constants.W_OK);return d;}catch(e){}}return __dirname;})();
-const DB_FILE=path.join(DATA_DIR,'world.json');
+const {createStore,resolveDataDir}=require('./storage');
+const storageConfig=resolveDataDir();
+const DATA_DIR=storageConfig.dir;
 const PUBLIC=path.join(__dirname,'public');
 const now=()=>Date.now();
 const H=3600e3,MIN=60e3;
@@ -17,12 +18,13 @@ const str=(v,max)=>typeof v==='string'?v.slice(0,max):'';
 /* ================= persistence ================= */
 let DB=null;
 function freshDB(){return{v:1,seq:1,players:{},names:{},clans:{},tags:{},slots:{},created:now(),season:{n:1,start:now(),end:now()+7*24*H},feed:[]};}
-function load(){for(const f of[DB_FILE,DB_FILE+'.bak']){try{const d=JSON.parse(fs.readFileSync(f,'utf8'));if(d&&d.players){DB=d;console.log('loaded',f,Object.keys(d.players).length,'players');return;}}catch(e){}}DB=freshDB();console.log('new world in',DATA_DIR);}
+const store=createStore({dir:DATA_DIR,allowNew:!storageConfig.production||process.env.ALLOW_NEW_WORLD==='1',fresh:freshDB});
 let dirty=false;const touch=()=>{dirty=true;};
-function save(force){if(!dirty&&!force)return;dirty=false;try{const s=JSON.stringify(DB);fs.writeFileSync(DB_FILE+'.tmp',s);try{if(fs.existsSync(DB_FILE))fs.copyFileSync(DB_FILE,DB_FILE+'.bak');}catch(e){}fs.renameSync(DB_FILE+'.tmp',DB_FILE);}catch(e){console.error('save failed',e.message);dirty=true;}}
-load();
+let saveError=null;
+function save(force){if(!dirty&&!force)return true;try{store.save(DB);dirty=false;saveError=null;return true;}catch(e){console.error('save failed',e.message);dirty=true;saveError=e;return false;}}
+DB=store.load();
 setInterval(save,8000);
-for(const sig of['SIGTERM','SIGINT'])process.on(sig,()=>{save(true);process.exit(0);});
+for(const sig of['SIGTERM','SIGINT'])process.on(sig,()=>{process.exit(save(true)?0:1);});
 /* ================= accounts ================= */
 const hashPass=(pass,salt)=>crypto.scryptSync(pass,salt,32).toString('hex');
 const nameKey=n=>n.toLowerCase();
@@ -318,7 +320,7 @@ let INDEX=null,INDEX_GZ=null,INDEX_ETAG='';
 function loadIndex(){try{INDEX=fs.readFileSync(process.env.INDEX_FILE||path.join(PUBLIC,'index.html'));INDEX_GZ=zlib.gzipSync(INDEX,{level:9});INDEX_ETAG='"'+crypto.createHash('md5').update(INDEX).digest('hex').slice(0,16)+'"';}catch(e){INDEX=Buffer.from('<h1>missing client</h1>');INDEX_GZ=zlib.gzipSync(INDEX);}}
 loadIndex();
 const server=http.createServer((req,res)=>{const u=req.url.split('?')[0];
-  if(u==='/health'){res.writeHead(200,{'content-type':'text/plain'});res.end('ok');return;}
+  if(u==='/health'){res.writeHead(saveError?503:200,{'content-type':'text/plain'});res.end(saveError?'storage unavailable':'ok');return;}
   if(u==='/stats'){res.writeHead(200,{'content-type':'application/json'});res.end(JSON.stringify({players:Object.keys(DB.players).length,online:CONN.size,clans:Object.keys(DB.clans).length,season:DB.season.n}));return;}
   if(u==='/'||u==='/index.html'){if(req.headers['if-none-match']===INDEX_ETAG){res.writeHead(304);res.end();return;}
     const gz=/\bgzip\b/.test(req.headers['accept-encoding']||'');res.writeHead(200,{'content-type':'text/html; charset=utf-8','cache-control':'no-cache','etag':INDEX_ETAG,...(gz?{'content-encoding':'gzip'}:{})});res.end(gz?INDEX_GZ:INDEX);return;}
@@ -333,3 +335,4 @@ wss.on('connection',(ws)=>{const c={ws,pid:null,pos:null,bucket:60,last:now()};
   ws.on('error',()=>{});});
 setInterval(()=>{for(const c of CONN.values())if(c.ws.readyState===1)try{c.ws.ping();}catch(e){}},25000);
 server.listen(PORT,()=>console.log('pirates server on',PORT,'data',DATA_DIR));
+
